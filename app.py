@@ -10,6 +10,30 @@ except Exception as e:
     st.error(f"Error: {e}")
     st.stop() # Stop the app if the connection fails
 
+# --- ONE-TIME DATA MIGRATION SCRIPT ---
+# This script will run once to rename the old table to the new one.
+# After running the app once successfully, you can remove this block.
+try:
+    with conn.session as s:
+        # Check if the old table 'ulubione_rzeczy' exists
+        s.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'ulubione_rzeczy')"))
+        old_table_exists = s.fetchone()[0]
+
+        if old_table_exists:
+            st.warning("Performing one-time data migration...")
+            # Drop the (likely empty) new table if it was accidentally created
+            s.execute(text('DROP TABLE IF EXISTS favorite_things;'))
+            # Rename the old table to the new name
+            s.execute(text('ALTER TABLE ulubione_rzeczy RENAME TO favorite_things;'))
+            s.commit()
+            st.success("Data migration successful! Your data is back.")
+            st.info("Refreshing the app...")
+            st.rerun() # Rerun to load the app with the correct table
+except Exception as e:
+    st.error(f"An error occurred during data migration: {e}")
+    st.stop()
+
+
 # --- Function to create the table ---
 def create_table_if_not_exists():
     try:
@@ -112,8 +136,7 @@ if not favorite_things_df.empty: # We use the DataFrame fetched in the READ sect
 else:
     st.info("The list is empty, nothing to remove.")
 
-st.markdown("---")
-st.caption("A simple CRUD app built with Streamlit and PostgreSQL.")
+
 
 # --- Developer Options (to be removed in production) ---
 with st.expander(" Developer Options"):
