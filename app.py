@@ -11,24 +11,30 @@ except Exception as e:
     st.stop() # Stop the app if the connection fails
 
 # --- ONE-TIME DATA MIGRATION SCRIPT ---
-# This script will run once to rename the old table to the new one.
+# This script will run once to rename the old table and its columns to the new ones.
 # After running the app once successfully, you can remove this block.
 try:
     with conn.session as s:
-        # Check if the old table 'ulubione_rzeczy' exists
+        # Step 1: Check if the old table 'ulubione_rzeczy' exists and rename it
         result = s.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'ulubione_rzeczy')"))
-        old_table_exists = result.fetchone()[0]
-
-        if old_table_exists:
-            st.warning("Performing one-time data migration...")
-            # Drop the (likely empty) new table if it was accidentally created
-            s.execute(text('DROP TABLE IF EXISTS favorite_things;'))
-            # Rename the old table to the new name
+        if result.fetchone()[0]:
+            st.warning("Migrating table name...")
+            s.execute(text('DROP TABLE IF EXISTS favorite_things;')) # Drop empty new table if it exists
             s.execute(text('ALTER TABLE ulubione_rzeczy RENAME TO favorite_things;'))
             s.commit()
-            st.success("Data migration successful! Your data is back.")
-            st.info("Refreshing the app...")
-            st.rerun() # Rerun to load the app with the correct table
+            st.success("Table renamed. Refreshing...")
+            st.rerun()
+
+        # Step 2: Check if old columns exist in 'favorite_things' and rename them
+        result = s.execute(text("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'favorite_things' AND column_name = 'nazwa')"))
+        if result.fetchone()[0]:
+            st.warning("Migrating column names...")
+            s.execute(text('ALTER TABLE favorite_things RENAME COLUMN nazwa TO name;'))
+            s.execute(text('ALTER TABLE favorite_things RENAME COLUMN opis TO description;'))
+            s.commit()
+            st.success("Columns renamed. Your data is fully restored. Refreshing...")
+            st.rerun()
+
 except Exception as e:
     st.error(f"An error occurred during data migration: {e}")
     st.stop()
