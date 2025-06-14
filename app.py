@@ -16,8 +16,8 @@ except Exception as e:
 try:
     with conn.session as s:
         # Check if the old table 'ulubione_rzeczy' exists
-        s.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'ulubione_rzeczy')"))
-        old_table_exists = s.fetchone()[0]
+        result = s.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'ulubione_rzeczy')"))
+        old_table_exists = result.fetchone()[0]
 
         if old_table_exists:
             st.warning("Performing one-time data migration...")
